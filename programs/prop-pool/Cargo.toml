@@ -16,7 +16,13 @@ no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
 
-
 [dependencies]
-anchor-lang = "0.31.0"
-
+anchor-lang = { version = "0.31.0", features = ["init-if-needed"] }
+autocrat = { git = "https://github.com/metaDAOproject/futarchy", features = [
+    "cpi",
+] }
+amm = { git = "https://github.com/metaDAOproject/futarchy", features = ["cpi"] }
+conditional-vault = { git = "https://github.com/metaDAOproject/futarchy", features = [
+    "cpi",
+], package = "conditional_vault" }
+spl-token = "8.0.0"

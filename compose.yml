@@ -1,0 +1,19 @@
+name: prop-pool
+
+services:
+  magicblock:
+    build: 
+      context: .
+      dockerfile: Dockerfile.MB
+    ports:
+      - "8899:8899"
+      - "8900:8900"
+      - "8080:8080"
+    env_file:
+      - .env
+    networks:
+      - prop-pool-network
+
+networks:
+  prop-pool-network:
+    driver: bridge
