@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::{invoke, invoke_signed};
-use spl_token::{instruction::transfer_checked, solana_program::program_pack::Pack};
+use anchor_spl::token::{transfer_checked, Mint, TokenAccount};
 
 use crate::{errors::ErrorCode, PropLP, StagedProposal, StagedProposalState};
 
@@ -9,10 +9,7 @@ pub fn ix_fund_staged_prop(ctx: Context<FundStagedProp>, args: FundStagedPropArg
         return Err(ErrorCode::StagedPropAlreadyMarket.into());
     }
 
-    let staged_prop_token_ata =
-        spl_token::state::Account::unpack(&ctx.accounts.staged_prop_ata.data.borrow())?;
-
-    let staged_prop_token_amount = staged_prop_token_ata.amount;
+    let staged_prop_token_amount = ctx.accounts.staged_prop_ata.amount;
 
     // Transfer tokens up to the amount in threshold
     if ctx.accounts.token_mint.key() == ctx.accounts.staged_prop.dao_token_thresholds.base_mint {
@@ -20,26 +17,18 @@ pub fn ix_fund_staged_prop(ctx: Context<FundStagedProp>, args: FundStagedPropArg
             ctx.accounts.staged_prop.dao_token_thresholds.base_threshold - staged_prop_token_amount;
         let amount_to_transfer = args.amount.min(max_amount);
 
-        let transfer_ix = transfer_checked(
-            &ctx.accounts.token_program.key(),
-            &ctx.accounts.lp_token_ata.key(),
-            &ctx.accounts.token_mint.key(),
-            &ctx.accounts.staged_prop_ata.key(),
-            &ctx.accounts.lp.key(),
-            &[&ctx.accounts.lp.key()],
+        transfer_checked(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                anchor_spl::token::TransferChecked {
+                    from: ctx.accounts.lp_token_ata.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.staged_prop_ata.to_account_info(),
+                    authority: ctx.accounts.lp.to_account_info(),
+                },
+            ),
             amount_to_transfer,
             ctx.accounts.staged_prop.dao_token_thresholds.base_decimals,
-        )?;
-
-        invoke(
-            &transfer_ix,
-            &[
-                ctx.accounts.token_program.to_account_info(),
-                ctx.accounts.lp_token_ata.to_account_info(),
-                ctx.accounts.token_mint.to_account_info(),
-                ctx.accounts.staged_prop_ata.to_account_info(),
-                ctx.accounts.lp.to_account_info(),
-            ],
         )?;
 
         ctx.accounts.lp_account.base_token_contributed += amount_to_transfer;
@@ -54,26 +43,18 @@ pub fn ix_fund_staged_prop(ctx: Context<FundStagedProp>, args: FundStagedPropArg
             - staged_prop_token_amount;
         let amount_to_transfer = args.amount.min(max_amount);
 
-        let transfer_ix = transfer_checked(
-            &ctx.accounts.token_program.key(),
-            &ctx.accounts.lp_token_ata.key(),
-            &ctx.accounts.token_mint.key(),
-            &ctx.accounts.staged_prop_ata.key(),
-            &ctx.accounts.lp.key(),
-            &[&ctx.accounts.lp.key()],
+        transfer_checked(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                anchor_spl::token::TransferChecked {
+                    from: ctx.accounts.lp_token_ata.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.staged_prop_ata.to_account_info(),
+                    authority: ctx.accounts.lp.to_account_info(),
+                },
+            ),
             amount_to_transfer,
             ctx.accounts.staged_prop.dao_token_thresholds.quote_decimals,
-        )?;
-
-        invoke(
-            &transfer_ix,
-            &[
-                ctx.accounts.token_program.to_account_info(),
-                ctx.accounts.lp_token_ata.to_account_info(),
-                ctx.accounts.token_mint.to_account_info(),
-                ctx.accounts.staged_prop_ata.to_account_info(),
-                ctx.accounts.lp.to_account_info(),
-            ],
         )?;
 
         ctx.accounts.lp_account.quote_token_contributed += amount_to_transfer;
@@ -105,11 +86,11 @@ pub struct FundStagedProp<'info> {
     )]
     pub lp_account: Account<'info, PropLP>,
 
-    pub token_mint: AccountInfo<'info>,
-    pub lp_token_ata: AccountInfo<'info>,
-    pub staged_prop_ata: AccountInfo<'info>,
+    pub token_mint: Account<'info, Mint>,
+    pub lp_token_ata: Account<'info, TokenAccount>,
+    pub staged_prop_ata: Account<'info, TokenAccount>,
 
-    #[account(address = spl_token::ID)]
+    #[account(address = anchor_spl::token::ID)]
     pub token_program: AccountInfo<'info>,
 }
 
@@ -117,11 +98,6 @@ pub fn ix_withdraw_from_staged_prop(
     ctx: Context<WithdrawFromStagedProp>,
     args: WithdrawFromStagedPropArgs,
 ) -> Result<()> {
-    let staged_prop_token_ata =
-        spl_token::state::Account::unpack(&ctx.accounts.staged_prop_ata.data.borrow())?;
-
-    let staged_prop_token_amount = staged_prop_token_ata.amount;
-
     if ctx.accounts.token_mint.key() == ctx.accounts.staged_prop.dao_token_thresholds.base_mint {
         let max_amount = ctx.accounts.lp_account.base_token_contributed;
         let amount_to_transfer;
@@ -131,17 +107,6 @@ pub fn ix_withdraw_from_staged_prop(
             amount_to_transfer = args.amount;
         }
 
-        let transfer_ix = transfer_checked(
-            &ctx.accounts.token_program.key(),
-            &ctx.accounts.staged_prop_ata.key(),
-            &ctx.accounts.token_mint.key(),
-            &ctx.accounts.lp_token_ata.key(),
-            &ctx.accounts.staged_prop.key(),
-            &[&ctx.accounts.staged_prop.key()],
-            amount_to_transfer,
-            ctx.accounts.staged_prop.dao_token_thresholds.base_decimals,
-        )?;
-
         let staged_id = ctx.accounts.staged_prop.staged_id;
         let signer_seeds = &[
             b"staged_prop",
@@ -150,16 +115,19 @@ pub fn ix_withdraw_from_staged_prop(
             &[ctx.bumps.staged_prop],
         ];
 
-        invoke_signed(
-            &transfer_ix,
-            &[
+        transfer_checked(
+            CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
-                ctx.accounts.lp_token_ata.to_account_info(),
-                ctx.accounts.token_mint.to_account_info(),
-                ctx.accounts.staged_prop_ata.to_account_info(),
-                ctx.accounts.lp.to_account_info(),
-            ],
-            &[signer_seeds],
+                anchor_spl::token::TransferChecked {
+                    from: ctx.accounts.lp_token_ata.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.staged_prop_ata.to_account_info(),
+                    authority: ctx.accounts.lp.to_account_info(),
+                },
+                &[signer_seeds],
+            ),
+            amount_to_transfer,
+            ctx.accounts.staged_prop.dao_token_thresholds.base_decimals,
         )?;
 
         // TODO: Get treggs to check if this math is right
@@ -177,17 +145,6 @@ pub fn ix_withdraw_from_staged_prop(
             amount_to_transfer = args.amount;
         }
 
-        let transfer_ix = transfer_checked(
-            &ctx.accounts.token_program.key(),
-            &ctx.accounts.staged_prop_ata.key(),
-            &ctx.accounts.token_mint.key(),
-            &ctx.accounts.lp_token_ata.key(),
-            &ctx.accounts.staged_prop.key(),
-            &[&ctx.accounts.staged_prop.key()],
-            amount_to_transfer,
-            ctx.accounts.staged_prop.dao_token_thresholds.quote_decimals,
-        )?;
-
         let staged_id = ctx.accounts.staged_prop.staged_id;
         let signer_seeds = &[
             b"staged_prop",
@@ -196,16 +153,19 @@ pub fn ix_withdraw_from_staged_prop(
             &[ctx.bumps.staged_prop],
         ];
 
-        invoke_signed(
-            &transfer_ix,
-            &[
+        transfer_checked(
+            CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
-                ctx.accounts.lp_token_ata.to_account_info(),
-                ctx.accounts.token_mint.to_account_info(),
-                ctx.accounts.staged_prop_ata.to_account_info(),
-                ctx.accounts.lp.to_account_info(),
-            ],
-            &[signer_seeds],
+                anchor_spl::token::TransferChecked {
+                    from: ctx.accounts.lp_token_ata.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.staged_prop_ata.to_account_info(),
+                    authority: ctx.accounts.lp.to_account_info(),
+                },
+                &[signer_seeds],
+            ),
+            amount_to_transfer,
+            ctx.accounts.staged_prop.dao_token_thresholds.quote_decimals,
         )?;
 
         // TODO: Get treggs to check if this math is right
@@ -241,10 +201,10 @@ pub struct WithdrawFromStagedProp<'info> {
     )]
     pub lp_account: Account<'info, PropLP>,
 
-    pub token_mint: AccountInfo<'info>,
-    pub lp_token_ata: AccountInfo<'info>,
-    pub staged_prop_ata: AccountInfo<'info>,
+    pub token_mint: Account<'info, Mint>,
+    pub lp_token_ata: Account<'info, TokenAccount>,
+    pub staged_prop_ata: Account<'info, TokenAccount>,
 
-    #[account(address = spl_token::ID)]
+    #[account(address = anchor_spl::token::ID)]
     pub token_program: AccountInfo<'info>,
 }

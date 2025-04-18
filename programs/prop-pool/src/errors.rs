@@ -6,4 +6,6 @@ pub enum ErrorCode {
     InvalidTokenMint,
     #[msg("Staged proposal already in market")]
     StagedPropAlreadyMarket,
+    #[msg("Staged prop not liquid enough")]
+    StagedPropNotLiquid,
 }

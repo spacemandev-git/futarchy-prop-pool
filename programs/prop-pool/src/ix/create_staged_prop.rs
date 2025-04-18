@@ -1,7 +1,6 @@
 use crate::state::StagedProposal;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program::invoke;
-use spl_token::instruction::transfer_checked;
+use anchor_spl::token::{transfer_checked, TokenAccount};
 
 use crate::state::*;
 
@@ -20,42 +19,35 @@ pub fn ix_create_staged_prop(ctx: Context<CreateStagedProp>, args: CreateStagedP
     ctx.accounts.staged_prop.set_inner(staged_proposal);
 
     // Transfer Base Tokens from Proposer ATAs to Reward ATAs
-    let base_mint_transfer_ix = transfer_checked(
-        &ctx.accounts.token_program.key(),
-        &ctx.accounts.proposer_base_token_ata.key(),
-        &ctx.accounts.base_mint.key(),
-        &ctx.accounts.reward_token_base_ata.key(),
-        &ctx.accounts.proposer.key(),
-        &[&ctx.accounts.proposer.key()],
+
+    transfer_checked(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            anchor_spl::token::TransferChecked {
+                from: ctx.accounts.proposer_base_token_ata.to_account_info(),
+                mint: ctx.accounts.base_mint.to_account_info(),
+                to: ctx.accounts.reward_token_base_ata.to_account_info(),
+                authority: ctx.accounts.proposer.to_account_info(),
+            },
+        ),
         args.reward_tokens.reward_token_amount_base,
         args.reward_tokens.reward_token_decimals,
     )?;
-    invoke(&base_mint_transfer_ix, &[
-        ctx.accounts.token_program.to_account_info(),
-        ctx.accounts.proposer_base_token_ata.to_account_info(),
-        ctx.accounts.base_mint.to_account_info(),
-        ctx.accounts.reward_token_base_ata.to_account_info(),
-        ctx.accounts.proposer.to_account_info(),
-    ])?;
-    
+
     // Transfer Quote Tokens from Proposer ATAs to Reward ATAs
-    let quote_mint_transfer_ix = transfer_checked(
-        &ctx.accounts.token_program.key(),
-        &ctx.accounts.proposer_quote_token_ata.key(),
-        &ctx.accounts.quote_mint.key(),
-        &ctx.accounts.reward_token_quote_ata.key(),
-        &ctx.accounts.proposer.key(),
-        &[&ctx.accounts.proposer.key()],
+    transfer_checked(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            anchor_spl::token::TransferChecked {
+                from: ctx.accounts.proposer_quote_token_ata.to_account_info(),
+                mint: ctx.accounts.quote_mint.to_account_info(),
+                to: ctx.accounts.reward_token_quote_ata.to_account_info(),
+                authority: ctx.accounts.proposer.to_account_info(),
+            },
+        ),
         args.reward_tokens.reward_token_amount_quote,
         args.reward_tokens.reward_token_decimals,
     )?;
-    invoke(&quote_mint_transfer_ix, &[
-        ctx.accounts.token_program.to_account_info(),
-        ctx.accounts.proposer_quote_token_ata.to_account_info(),
-        ctx.accounts.quote_mint.to_account_info(),
-        ctx.accounts.reward_token_quote_ata.to_account_info(),
-        ctx.accounts.proposer.to_account_info(),
-    ])?;
 
     Ok(())
 }
@@ -97,11 +89,11 @@ pub struct CreateStagedProp<'info> {
     pub proposer_quote_token_ata: AccountInfo<'info>,
 
     /// CHECK: Deserialize as SPL Token Program
-    #[account(address = spl_token::ID)]
+    #[account(address = anchor_spl::token::ID)]
     pub token_program: AccountInfo<'info>,
 
     #[account(address = args.dao_token_thresholds.base_mint)]
-    pub base_mint: AccountInfo<'info>,
+    pub base_mint: Account<'info, TokenAccount>,
     #[account(address = args.dao_token_thresholds.quote_mint)]
-    pub quote_mint: AccountInfo<'info>,
+    pub quote_mint: Account<'info, TokenAccount>,
 }
