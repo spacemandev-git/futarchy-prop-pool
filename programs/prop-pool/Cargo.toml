@@ -19,10 +19,12 @@ idl-build = ["anchor-lang/idl-build"]
 [dependencies]
 anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
 anchor-spl = "0.29.0"
-autocrat = { git = "https://github.com/metaDAOproject/futarchy", features = [
+autocrat = { git = "https://github.com/spacemandev-git/futarchy", branch = "develop", features = [
     "cpi",
 ] }
-amm = { git = "https://github.com/metaDAOproject/futarchy", features = ["cpi"] }
-conditional-vault = { git = "https://github.com/metaDAOproject/futarchy", features = [
+amm = { git = "https://github.com/spacemandev-git/futarchy", branch = "develop", features = [
+    "cpi",
+] }
+conditional-vault = { git = "https://github.com/spacemandev-git/futarchy", branch = "develop", features = [
     "cpi",
 ], package = "conditional_vault" }

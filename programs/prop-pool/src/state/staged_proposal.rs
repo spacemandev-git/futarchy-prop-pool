@@ -34,6 +34,10 @@ pub struct StagedProposalInstruction {
 pub enum StagedProposalState {
     Staged,
     Market,
+    Passed,
+    Executed,
+    Failed,
+    Finalized,
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize, Debug, PartialEq, Eq, InitSpace)]

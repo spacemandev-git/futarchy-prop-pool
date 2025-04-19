@@ -39,9 +39,44 @@ pub mod prop_pool {
         ix::ix_withdraw_from_staged_prop(ctx, args)
     }
 
-    // 3. Whenever funded, allow for 5 ix to be called that CPI into Futarchy Programs.
-    // create_proposal_address, create_question_account, create_conditional_account, initialize_amms, split_tokens, add_liquidity, init_prop
-    // 4. Set StagedProposal to MarketProposal
+    // 3. Whenever funded, initialize a proposal in the Futarchy Program
+    pub fn init_question(
+        ctx: Context<InitializeQuestion>,
+        args: IxInitializeQuestionArgs,
+    ) -> Result<()> {
+        ix::ix_initalize_question(ctx, args)
+    }
 
-    // 5. Withdraw LP Rewards for LP
+    pub fn init_conditional_vault(ctx: Context<InitializeConditionalVault>) -> Result<()> {
+        ix::ix_initialize_conditional_vault(ctx)
+    }
+
+    pub fn init_amms(ctx: Context<InitializeAmm>) -> Result<()> {
+        ix::ix_initialize_amms(ctx)
+    }
+
+    pub fn split_tokens(ctx: Context<SplitTokens>) -> Result<()> {
+        ix::ix_split_tokens(ctx)
+    }
+
+    pub fn add_liquidity(ctx: Context<AddLiquidity>) -> Result<()> {
+        ix::ix_add_liquidity(ctx)
+    }
+
+    pub fn init_proposal(ctx: Context<InitProposal>, args: IxInitProposalArgs) -> Result<()> {
+        ix::ix_init_proposal(ctx, args)
+    }
+
+    //4. Execute Proposal
+    pub fn execute_proposal(ctx: Context<ExecuteProposal>) -> Result<()> {
+        ix::ix_execute_proposal(ctx)
+    }
+
+    //5. Finalize Proposal
+    pub fn finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
+        ix::ix_finalize_proposal(ctx)
+    }
+
+    //6. Withdraw Liquidity
+    //7. Allow LP Withdrawal + Reward Distribution
 }

@@ -73,7 +73,7 @@ dependencies = [
 [[package]]
 name = "amm"
 version = "0.4.1"
-source = "git+https://github.com/metaDAOproject/futarchy#b8534349feab8d0db823c35064dd716266400923"
+source = "git+https://github.com/spacemandev-git/futarchy?branch=develop#9eb653c74ff8944ea88fca20532365d547eb5b76"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -404,7 +404,7 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 [[package]]
 name = "autocrat"
 version = "0.4.2"
-source = "git+https://github.com/metaDAOproject/futarchy#b8534349feab8d0db823c35064dd716266400923"
+source = "git+https://github.com/spacemandev-git/futarchy?branch=develop#9eb653c74ff8944ea88fca20532365d547eb5b76"
 dependencies = [
  "amm",
  "anchor-lang",
@@ -711,7 +711,7 @@ dependencies = [
 [[package]]
 name = "conditional_vault"
 version = "0.4.0"
-source = "git+https://github.com/metaDAOproject/futarchy#b8534349feab8d0db823c35064dd716266400923"
+source = "git+https://github.com/spacemandev-git/futarchy?branch=develop#9eb653c74ff8944ea88fca20532365d547eb5b76"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
