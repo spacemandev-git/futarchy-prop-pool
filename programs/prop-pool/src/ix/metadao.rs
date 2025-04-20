@@ -30,16 +30,26 @@ pub fn ix_initalize_question(
     let question_data = format!("Will {} pass?/FAIL/PASS", args.proposal_pubkey);
     let question_id = sha256(question_data.as_bytes()).to_bytes();
 
+    let staged_prop_key = ctx.accounts.staged_prop.key();
+    let signer_seeds = &[
+        b"staged_wallet",
+        staged_prop_key.as_ref(),
+        &[ctx.bumps.staged_wallet],
+    ];
     conditional_vault::cpi::initialize_question(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.conditional_vault.to_account_info(),
             conditional_vault::cpi::accounts::InitializeQuestion {
                 question: ctx.accounts.question_account.to_account_info(),
-                payer: ctx.accounts.authority.to_account_info(),
+                payer: ctx.accounts.staged_wallet.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
-                event_authority: ctx.accounts.authority.to_account_info(),
+                event_authority: ctx
+                    .accounts
+                    .conditional_vault_event_authority
+                    .to_account_info(),
                 program: ctx.accounts.conditional_vault.to_account_info(),
             },
+            &[signer_seeds],
         ),
         conditional_vault::InitializeQuestionArgs {
             question_id,
@@ -66,6 +76,12 @@ pub struct InitializeQuestion<'info> {
         constraint = staged_prop.proposer == authority.key()
     )]
     pub staged_prop: Account<'info, StagedProposal>,
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: AccountInfo<'info>,
     pub staged_prop_base_token_ata: Account<'info, TokenAccount>,
     pub staged_prop_quote_token_ata: Account<'info, TokenAccount>,
 
@@ -75,6 +91,13 @@ pub struct InitializeQuestion<'info> {
 
     /// CHECK: Program
     pub conditional_vault: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = conditional_vault.key()
+    )]
+    pub conditional_vault_event_authority: AccountInfo<'info>,
 }
 
 pub fn ix_initialize_conditional_vault(ctx: Context<InitializeConditionalVault>) -> Result<()> {
@@ -82,9 +105,12 @@ pub fn ix_initialize_conditional_vault(ctx: Context<InitializeConditionalVault>)
         ctx.accounts.conditional_vault.to_account_info(),
         conditional_vault::cpi::accounts::InitializeConditionalVault {
             question: ctx.accounts.question_account.to_account_info(),
-            payer: ctx.accounts.authority.to_account_info(),
+            payer: ctx.accounts.staged_wallet.to_account_info(),
             system_program: ctx.accounts.system_program.to_account_info(),
-            event_authority: ctx.accounts.authority.to_account_info(),
+            event_authority: ctx
+                .accounts
+                .conditional_vault_event_authority
+                .to_account_info(),
             program: ctx.accounts.conditional_vault.to_account_info(),
             vault: ctx.accounts.base_vault.to_account_info(),
             underlying_token_mint: ctx.accounts.dao_token_mint.to_account_info(),
@@ -107,6 +133,12 @@ pub struct InitializeConditionalVault<'info> {
         constraint = staged_prop.proposer == authority.key()
     )]
     pub staged_prop: Account<'info, StagedProposal>,
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
     #[account(address = anchor_spl::token::ID)]
@@ -117,6 +149,13 @@ pub struct InitializeConditionalVault<'info> {
     // CHECK: Program
     #[account(mut)]
     pub conditional_vault: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = conditional_vault.key()
+    )]
+    pub conditional_vault_event_authority: AccountInfo<'info>,
     /// CHECK: Init in previous step
     pub question_account: AccountInfo<'info>,
     /// CHECK: Init via CPI
@@ -130,11 +169,17 @@ pub struct InitializeConditionalVault<'info> {
 
 // Called TWICE, once for Pass, once for Fail
 pub fn ix_initialize_amms(ctx: Context<InitializeAmm>) -> Result<()> {
+    let staged_prop_key = ctx.accounts.staged_prop.key();
+    let signer_seeds = &[
+        b"staged_wallet",
+        staged_prop_key.as_ref(),
+        &[ctx.bumps.staged_wallet],
+    ];
     amm::cpi::create_amm(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.amm_program.to_account_info(),
             amm::cpi::accounts::CreateAmm {
-                user: ctx.accounts.authority.to_account_info(),
+                user: ctx.accounts.staged_wallet.to_account_info(),
                 amm: ctx.accounts.amm.to_account_info(),
                 lp_mint: ctx.accounts.lp_mint.to_account_info(),
                 base_mint: ctx.accounts.base_mint.to_account_info(),
@@ -144,9 +189,10 @@ pub fn ix_initialize_amms(ctx: Context<InitializeAmm>) -> Result<()> {
                 associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
                 token_program: ctx.accounts.token_program.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
-                event_authority: ctx.accounts.authority.to_account_info(),
+                event_authority: ctx.accounts.amm_event_authority.to_account_info(),
                 program: ctx.accounts.amm_program.to_account_info(),
             },
+            &[signer_seeds],
         ),
         amm::instructions::CreateAmmArgs {
             twap_initial_observation: ctx.accounts.dao.twap_initial_observation,
@@ -169,9 +215,22 @@ pub struct InitializeAmm<'info> {
         constraint = staged_prop.proposer == authority.key()
     )]
     pub staged_prop: Account<'info, StagedProposal>,
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: AccountInfo<'info>,
 
     /// CHECK: Program
     pub amm_program: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = amm_program.key()
+    )]
+    pub amm_event_authority: AccountInfo<'info>,
     /// CHECK: Init via CPI
     #[account(mut)]
     pub amm: AccountInfo<'info>, //different for pass/fail
@@ -199,8 +258,14 @@ pub struct InitializeAmm<'info> {
 }
 
 pub fn ix_split_tokens(ctx: Context<SplitTokens>) -> Result<()> {
+    let staged_wallet_key = ctx.accounts.staged_wallet.key();
+    let signer_seeds = &[
+        b"staged_wallet",
+        staged_wallet_key.as_ref(),
+        &[ctx.bumps.staged_wallet],
+    ];
     conditional_vault::cpi::split_tokens(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.conditional_vault.to_account_info(),
             conditional_vault::cpi::accounts::InteractWithVault {
                 question: ctx.accounts.question_account.to_account_info(),
@@ -209,17 +274,21 @@ pub fn ix_split_tokens(ctx: Context<SplitTokens>) -> Result<()> {
                     .accounts
                     .vault_underlying_token_account
                     .to_account_info(),
-                authority: ctx.accounts.authority.to_account_info(),
+                authority: ctx.accounts.staged_wallet.to_account_info(),
                 user_underlying_token_account: ctx
                     .accounts
                     .user_underlying_token_account
                     .to_account_info(),
                 token_program: ctx.accounts.token_program.to_account_info(),
-                event_authority: ctx.accounts.authority.to_account_info(),
+                event_authority: ctx
+                    .accounts
+                    .conditional_vault_event_authority
+                    .to_account_info(),
                 program: ctx.accounts.conditional_vault.to_account_info(),
             },
+            &[signer_seeds],
         ),
-        0,
+        0, // TODO: Figure out how much to split???
     )?;
     Ok(())
 }
@@ -230,8 +299,26 @@ pub struct SplitTokens<'info> {
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 
-    // Program
+    #[account(
+        constraint = staged_prop.proposer == authority.key()
+    )]
+    pub staged_prop: Account<'info, StagedProposal>,
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: AccountInfo<'info>,
+
+    /// CHECK: Passed along via CPI
     pub conditional_vault: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = conditional_vault.key()
+    )]
+    pub conditional_vault_event_authority: AccountInfo<'info>,
     /// CHECK: Passed along via CPI, no need to deserialize
     pub question_account: AccountInfo<'info>,
     /// CHECK: Passed along via CPI, no need to deserialize
@@ -248,11 +335,18 @@ pub struct SplitTokens<'info> {
 
 // Called TWICE, once for Pass, once for Fail
 pub fn ix_add_liquidity(ctx: Context<AddLiquidity>) -> Result<()> {
+    let staged_wallet_key = ctx.accounts.staged_wallet.key();
+    let signer_seeds = &[
+        b"staged_wallet",
+        staged_wallet_key.as_ref(),
+        &[ctx.bumps.staged_wallet],
+    ];
+
     amm::cpi::add_liquidity(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.amm.to_account_info(),
             amm::cpi::accounts::AddOrRemoveLiquidity {
-                user: ctx.accounts.authority.to_account_info(),
+                user: ctx.accounts.staged_wallet.to_account_info(),
                 amm: ctx.accounts.amm.to_account_info(),
                 lp_mint: ctx.accounts.lp_mint.to_account_info(),
                 user_lp_account: ctx.accounts.user_lp_account.to_account_info(),
@@ -262,17 +356,14 @@ pub fn ix_add_liquidity(ctx: Context<AddLiquidity>) -> Result<()> {
                 vault_ata_quote: ctx.accounts.vault_ata_quote.to_account_info(),
                 token_program: ctx.accounts.token_program.to_account_info(),
                 program: ctx.accounts.amm.to_account_info(),
-                event_authority: ctx.accounts.authority.to_account_info(),
+                event_authority: ctx.accounts.amm_event_authority.to_account_info(),
             },
+            &[signer_seeds],
         ),
         amm::instructions::AddLiquidityArgs {
-            quote_amount: ctx
-                .accounts
-                .staged_prop
-                .dao_token_thresholds
-                .quote_threshold,
-            max_base_amount: ctx.accounts.staged_prop.dao_token_thresholds.base_threshold,
-            min_lp_tokens: 0, //Ask prophet what this amount should be.
+            quote_amount: 0,    //TODO: Ask prophet what this amount should be.
+            max_base_amount: 0, //TODO: Ask prophet what this amount should be.
+            min_lp_tokens: 0,   //TODO: Ask prophet what this amount should be.
         },
     )?;
     Ok(())
@@ -288,9 +379,22 @@ pub struct AddLiquidity<'info> {
         constraint = staged_prop.proposer == authority.key()
     )]
     pub staged_prop: Account<'info, StagedProposal>,
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: AccountInfo<'info>,
 
     /// CHECK: Program
     pub amm: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = amm.key()
+    )]
+    pub amm_event_authority: AccountInfo<'info>,
     /// CHECK: Init via CPI
     pub lp_mint: AccountInfo<'info>,
     /// CHECK: Passed along via CPI, no need to deserialize
@@ -306,8 +410,14 @@ pub struct AddLiquidity<'info> {
 }
 
 pub fn ix_init_proposal(ctx: Context<InitProposal>, args: IxInitProposalArgs) -> Result<()> {
+    let staged_wallet_key = ctx.accounts.staged_wallet.key();
+    let signer_seeds = &[
+        b"staged_wallet",
+        staged_wallet_key.as_ref(),
+        &[ctx.bumps.staged_wallet],
+    ];
     autocrat::cpi::initialize_proposal(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.autocrat.to_account_info(),
             autocrat::cpi::accounts::InitializeProposal {
                 proposal: ctx.accounts.proposal.to_account_info(),
@@ -325,10 +435,11 @@ pub fn ix_init_proposal(ctx: Context<InitProposal>, args: IxInitProposalArgs) ->
                 fail_lp_vault_account: ctx.accounts.fail_lp_vault_account.to_account_info(),
                 token_program: ctx.accounts.token_program.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
-                event_authority: ctx.accounts.authority.to_account_info(),
+                event_authority: ctx.accounts.autocrat_event_authority.to_account_info(),
                 program: ctx.accounts.autocrat.to_account_info(),
-                proposer: ctx.accounts.authority.to_account_info(),
+                proposer: ctx.accounts.staged_wallet.to_account_info(),
             },
+            &[signer_seeds],
         ),
         autocrat::InitializeProposalParams {
             description_url: ctx.accounts.staged_prop.description_url.clone(),
@@ -371,10 +482,25 @@ pub struct InitProposal<'info> {
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 
+    #[account(
+        constraint = staged_prop.proposer == authority.key()
+    )]
     pub staged_prop: Account<'info, StagedProposal>,
-
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: AccountInfo<'info>,
     /// CHECK: Program
     pub autocrat: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = autocrat.key()
+    )]
+    pub autocrat_event_authority: AccountInfo<'info>,
     /// CHECK: Init via CPI
     #[account(mut)]
     pub proposal: AccountInfo<'info>,
@@ -417,7 +543,7 @@ pub fn ix_execute_proposal(ctx: Context<ExecuteProposal>) -> Result<()> {
         autocrat::cpi::accounts::ExecuteProposal {
             proposal: ctx.accounts.proposal.to_account_info(),
             dao: ctx.accounts.dao.to_account_info(),
-            event_authority: ctx.accounts.authority.to_account_info(),
+            event_authority: ctx.accounts.autocrat_event_authority.to_account_info(),
             program: ctx.accounts.autocrat.to_account_info(),
         },
     ))?;
@@ -441,6 +567,13 @@ pub struct ExecuteProposal<'info> {
 
     /// CHECK: Program
     pub autocrat: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = autocrat.key()
+    )]
+    pub autocrat_event_authority: AccountInfo<'info>,
     /// CHECK: Passed through CPI
     #[account(mut)]
     pub proposal: AccountInfo<'info>,
@@ -449,7 +582,13 @@ pub struct ExecuteProposal<'info> {
 }
 
 pub fn ix_finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
-    autocrat::cpi::finalize_proposal(CpiContext::new(
+    let staged_wallet_key = ctx.accounts.staged_wallet.key();
+    let signer_seeds = &[
+        b"staged_wallet",
+        staged_wallet_key.as_ref(),
+        &[ctx.bumps.staged_wallet],
+    ];
+    autocrat::cpi::finalize_proposal(CpiContext::new_with_signer(
         ctx.accounts.autocrat.to_account_info(),
         autocrat::cpi::accounts::FinalizeProposal {
             proposal: ctx.accounts.proposal.to_account_info(),
@@ -464,10 +603,11 @@ pub fn ix_finalize_proposal(ctx: Context<FinalizeProposal>) -> Result<()> {
             token_program: ctx.accounts.token_program.to_account_info(),
             vault_program: ctx.accounts.vault_program.to_account_info(),
             vault_event_authority: ctx.accounts.vault_event_authority.to_account_info(),
-            event_authority: ctx.accounts.authority.to_account_info(),
+            event_authority: ctx.accounts.autocrat_event_authority.to_account_info(),
             program: ctx.accounts.autocrat.to_account_info(),
             treasury: ctx.accounts.treasury.to_account_info(),
         },
+        &[signer_seeds],
     ))?;
 
     ctx.accounts.staged_prop.stage = StagedProposalState::Finalized;
@@ -485,9 +625,22 @@ pub struct FinalizeProposal<'info> {
         constraint = staged_prop.stage == StagedProposalState::Passed
     )]
     pub staged_prop: Account<'info, StagedProposal>,
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: AccountInfo<'info>,
 
     /// CHECK: Program
     pub autocrat: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = autocrat.key()
+    )]
+    pub autocrat_event_authority: AccountInfo<'info>,
     /// CHECK: Passed through CPI
     #[account(mut)]
     pub proposal: AccountInfo<'info>,
