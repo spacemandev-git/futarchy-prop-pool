@@ -77,6 +77,5 @@ pub mod prop_pool {
         ix::ix_finalize_proposal(ctx)
     }
 
-    //6. Withdraw Liquidity
-    //7. Allow LP Withdrawal + Reward Distribution
+    //6. Withdraw LP Fees??
 }

@@ -1,6 +1,7 @@
 use crate::state::StagedProposal;
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, solana_program::native_token::LAMPORTS_PER_SOL};
 use anchor_spl::token::{transfer_checked, TokenAccount};
+use anchor_lang::solana_program::system_instruction::transfer;
 
 use crate::state::*;
 
@@ -18,8 +19,15 @@ pub fn ix_create_staged_prop(ctx: Context<CreateStagedProp>, args: CreateStagedP
     };
     ctx.accounts.staged_prop.set_inner(staged_proposal);
 
-    // Transfer Base Tokens from Proposer ATAs to Reward ATAs
+    // Fund the Stage Wallet with 1 SOL to make accounts. Can Reduce this maybe? Dunno how much we will need for AMMs and other things.
+    // Refund after finalize
+    transfer(
+        &ctx.accounts.proposer.key(),
+        &ctx.accounts.staged_wallet.key(),
+        1*LAMPORTS_PER_SOL,
+    );
 
+    // Transfer Base Tokens from Proposer ATAs to Reward ATAs
     transfer_checked(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -76,6 +84,12 @@ pub struct CreateStagedProp<'info> {
         bump
     )]
     pub staged_prop: Account<'info, StagedProposal>,
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: UncheckedAccount<'info>,
     // Reward ATAs that hold Reward Tokens
     /// CHECK: Deserialize as SPL Token Account
     pub reward_token_base_ata: AccountInfo<'info>,

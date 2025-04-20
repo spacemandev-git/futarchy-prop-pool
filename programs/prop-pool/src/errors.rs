@@ -8,4 +8,6 @@ pub enum ErrorCode {
     StagedPropAlreadyMarket,
     #[msg("Staged prop not liquid enough")]
     StagedPropNotLiquid,
+    #[msg("Cannot withdraw rewards if prop is still funding")]
+    StagedPropStillFunding,
 }

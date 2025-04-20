@@ -7,6 +7,5 @@ pub struct PropLP {
     pub staged_prop: Pubkey,
     pub base_token_contributed: u64,
     pub quote_token_contributed: u64,
-    pub base_token_reward_redeemed: u64,
-    pub quote_token_reward_redeemed: u64,
+    pub rewards_redeemed: bool,
 }
