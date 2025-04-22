@@ -1,7 +1,7 @@
 #![allow(unexpected_cfgs)]
 use anchor_lang::prelude::*;
 
-declare_id!("3yrRGtxcxs2pRoBYPsz2DYkiQDQdxqjv1wyGMySNSZ15");
+declare_id!("9DzBp7dwMGVBWY6oL3yH59R8YsYFbqnybACg6SwzAwTQ");
 
 mod constants;
 mod errors;
@@ -77,5 +77,5 @@ pub mod prop_pool {
         ix::ix_finalize_proposal(ctx)
     }
 
-    //6. Withdraw LP Fees??
+    //6. Redeem tokens from AMMs
 }

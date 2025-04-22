@@ -7,21 +7,112 @@ addon "svm" {
 }
 
 // Set up Signers
-signer "proposer" "svm::secret_key" {
-    keypair_json = "~/.config/solana/id.json"
+signer "admin" "svm::secret_key" {
+    keypair_json = "deps/wallets/admin.json"
+}
+
+signer "wallet1" "svm::secret_key" {
+    keypair_json = "deps/wallets/wallet1.json"
+}
+
+signer "wallet2" "svm::secret_key" {
+    keypair_json = "deps/wallets/wallet2.json"
+}
+
+signer "wallet3" "svm::secret_key" {
+    keypair_json = "deps/wallets/wallet3.json"
+}
+
+signer "wallet4" "svm::secret_key" {
+    keypair_json = "deps/wallets/wallet4.json"
 }
 
 // Setup Token Accounts
 action "setup" "svm::setup_surfnet" {
+    set_account {
+        public_key = signer.admin.public_key
+        lamports = 1000000000000000000
+    }
+
+    set_account {
+        public_key = signer.wallet1.public_key
+        lamports = 1000000000000000000
+    }
+
     set_token_account {
-        public_key = signer.proposer.public_key
+        public_key = signer.wallet1.public_key
         token = "usdc"
         amount = 200000000000
     }
 
     set_token_account {
-        public_key = signer.proposer.public_key
+        public_key = signer.wallet1.public_key
         token = "mtnc7NNSpAJuvYNmayXU63WhWZGgFzwQ2yeYWqemeta"
         amount = 200000000000
     }
+
+    set_account {
+        public_key = signer.wallet2.public_key
+        lamports = 1000000000000000000
+    }
+
+    set_token_account {
+        public_key = signer.wallet2.public_key
+        token = "usdc"
+        amount = 200000000000
+    }
+
+    set_token_account {
+        public_key = signer.wallet2.public_key
+        token = "mtnc7NNSpAJuvYNmayXU63WhWZGgFzwQ2yeYWqemeta"
+        amount = 200000000000
+    }
+
+    set_account {
+        public_key = signer.wallet3.public_key
+        lamports = 1000000000000000000
+    }
+
+    set_token_account {
+        public_key = signer.wallet3.public_key
+        token = "usdc"
+        amount = 200000000000
+    }
+
+    set_token_account {
+        public_key = signer.wallet3.public_key
+        token = "mtnc7NNSpAJuvYNmayXU63WhWZGgFzwQ2yeYWqemeta"
+        amount = 200000000000
+    }
+
+    set_account {
+        public_key = signer.wallet4.public_key
+        lamports = 1000000000000000000
+    }
+
+    set_token_account {
+        public_key = signer.wallet4.public_key
+        token = "usdc"
+        amount = 200000000000
+    }
+
+    set_token_account {
+        public_key = signer.wallet4.public_key
+        token = "mtnc7NNSpAJuvYNmayXU63WhWZGgFzwQ2yeYWqemeta"
+        amount = 200000000000
+    }
+}
+
+signer "program_signer" "svm::secret_key" {
+    keypair_json = "deps/deploy/prop_pool-keypair.json"
+}
+
+output "program_signer_public_key" {
+    value = std::encode_base58(signer.program_signer.public_key)
+}
+
+action "deploy" "svm::deploy_program" {
+    program = svm::get_program_from_anchor_project("prop-pool")
+    authority = signer.program_signer
+    payer = signer.admin
 }

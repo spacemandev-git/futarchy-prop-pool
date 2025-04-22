@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-prop_pool = "3yrRGtxcxs2pRoBYPsz2DYkiQDQdxqjv1wyGMySNSZ15"
+prop_pool = "9DzBp7dwMGVBWY6oL3yH59R8YsYFbqnybACg6SwzAwTQ"
 
 [registry]
 url = "https://api.apr.dev"

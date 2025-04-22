@@ -1,9 +1,7 @@
 
 
 async function main() {
-    // Create a Luzid Validator
     
-    // Clone 
     
 }
 
