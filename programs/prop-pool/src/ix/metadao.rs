@@ -100,6 +100,7 @@ pub struct InitializeQuestion<'info> {
     pub conditional_vault_event_authority: AccountInfo<'info>,
 }
 
+// Called TWICE, once for Pass, once for Fail
 pub fn ix_initialize_conditional_vault(ctx: Context<InitializeConditionalVault>) -> Result<()> {
     conditional_vault::cpi::initialize_conditional_vault(CpiContext::new(
         ctx.accounts.conditional_vault.to_account_info(),
@@ -214,7 +215,7 @@ pub struct InitializeAmm<'info> {
     #[account(
         constraint = staged_prop.proposer == authority.key()
     )]
-    pub staged_prop: Account<'info, StagedProposal>,
+    pub staged_prop: Box<Account<'info, StagedProposal>>,
     #[account(
         seeds = [b"staged_wallet", staged_prop.key().as_ref()],
         bump,
@@ -253,8 +254,7 @@ pub struct InitializeAmm<'info> {
     /// CHECK: Program
     #[account(address = anchor_spl::token::ID)]
     pub token_program: AccountInfo<'info>,
-
-    pub dao: Account<'info, autocrat::state::Dao>,
+    pub dao: Box<Account<'info, autocrat::state::Dao>>,
 }
 
 pub fn ix_split_tokens(ctx: Context<SplitTokens>) -> Result<()> {

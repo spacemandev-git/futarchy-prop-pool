@@ -1,10 +1,10 @@
 name: prop-pool
 
 services:
-  magicblock:
+  surfpool:
     build: 
       context: .
-      dockerfile: Dockerfile.MB
+      dockerfile: Dockerfile.Surfpool
     ports:
       - "8899:8899"
       - "8900:8900"

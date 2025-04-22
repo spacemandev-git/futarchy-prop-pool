@@ -1,0 +1,27 @@
+// Access tutorials and documentation at [docs.txtx.sh](https://docs.txtx.sh) 
+// to understand the syntax and discover the powerful features of txtx.
+
+addon "svm" {
+    rpc_api_url = "http://localhost:8899"
+    network_id = "localnet"
+}
+
+// Set up Signers
+signer "proposer" "svm::secret_key" {
+    keypair_json = "~/.config/solana/id.json"
+}
+
+// Setup Token Accounts
+action "setup" "svm::setup_surfnet" {
+    set_token_account {
+        public_key = signer.proposer.public_key
+        token = "usdc"
+        amount = 200000000000
+    }
+
+    set_token_account {
+        public_key = signer.proposer.public_key
+        token = "mtnc7NNSpAJuvYNmayXU63WhWZGgFzwQ2yeYWqemeta"
+        amount = 200000000000
+    }
+}

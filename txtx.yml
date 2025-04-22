@@ -1,0 +1,8 @@
+---
+name: prop-pool
+id: prop-pool
+runbooks:
+    - name: local-testing
+      description: Testing staged proposals on localhost
+      location: runbooks/deployments/local-testing.tx
+environments:
