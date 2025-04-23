@@ -674,3 +674,65 @@ pub struct FinalizeProposal<'info> {
     /// CHECK: Passed through CPI
     pub treasury: AccountInfo<'info>,
 }
+// called per pass/fail amm
+pub fn ix_redeem_tokens(ctx: Context<RedeemTokens>) -> Result<()> {
+    conditional_vault::cpi::redeem_tokens(CpiContext::new(
+        ctx.accounts.conditional_vault.to_account_info(),
+        conditional_vault::cpi::accounts::InteractWithVault {
+            question: ctx.accounts.question.to_account_info(),
+            vault: ctx.accounts.vault.to_account_info(),
+            vault_underlying_token_account: ctx
+                .accounts
+                .vault_underlying_token_account
+                .to_account_info(),
+            authority: ctx.accounts.staged_wallet.to_account_info(),
+            user_underlying_token_account: ctx
+                .accounts
+                .user_underlying_token_account
+                .to_account_info(),
+            token_program: ctx.accounts.token_program.to_account_info(),
+            event_authority: ctx
+                .accounts
+                .conditional_vault_event_authority
+                .to_account_info(),
+            program: ctx.accounts.conditional_vault.to_account_info(),
+        },
+    ))?;
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct RedeemTokens<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+
+    pub staged_prop: Account<'info, StagedProposal>,
+    #[account(
+        seeds = [b"staged_wallet", staged_prop.key().as_ref()],
+        bump,
+    )]
+    /// CHECK: Used as proposer wallet instead of PDA
+    pub staged_wallet: AccountInfo<'info>,
+
+    /// CHECK: Program
+    pub conditional_vault: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    #[account(
+        seeds = [b"event_authority"],
+        bump,
+        seeds::program = conditional_vault.key()
+    )]
+    pub conditional_vault_event_authority: AccountInfo<'info>,
+
+    /// CHECK: Passed along via CPI
+    pub question: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    pub vault: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    pub vault_underlying_token_account: AccountInfo<'info>,
+    /// CHECK: Passed along via CPI
+    pub user_underlying_token_account: AccountInfo<'info>,
+    /// CHECK: Program
+    pub token_program: AccountInfo<'info>,
+}

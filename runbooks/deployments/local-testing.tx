@@ -17,7 +17,7 @@ signer "wallet1" "svm::secret_key" {
 
 signer "wallet2" "svm::secret_key" {
     keypair_json = "deps/wallets/wallet2.json"
-}
+}`
 
 signer "wallet3" "svm::secret_key" {
     keypair_json = "deps/wallets/wallet3.json"

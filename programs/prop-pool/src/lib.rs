@@ -78,4 +78,7 @@ pub mod prop_pool {
     }
 
     //6. Redeem tokens from AMMs
+    pub fn redeem_tokens(ctx: Context<RedeemTokens>) -> Result<()> {
+        ix::ix_redeem_tokens(ctx)
+    }
 }
